@@ -1,5 +1,11 @@
 use crate::{device, savestates};
 
+pub const TAG_MASK: u32 = if cfg!(feature = "modloader") {
+    0x3ffffffc
+} else {
+    0x1ffffffc
+};
+
 #[derive(Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ICache {
     pub valid: bool,
@@ -21,7 +27,7 @@ pub struct DCache {
 
 pub fn icache_hit(device: &device::Device, line_index: usize, phys_address: u64) -> bool {
     device.memory.icache[line_index].valid
-        && (device.memory.icache[line_index].tag & 0x1ffffffc) == (phys_address & !0xFFF) as u32
+        && (device.memory.icache[line_index].tag & TAG_MASK) == (phys_address & !0xFFF) as u32
 }
 
 pub fn icache_writeback(device: &mut device::Device, line_index: usize) {
@@ -29,7 +35,7 @@ pub fn icache_writeback(device: &mut device::Device, line_index: usize) {
 
     let cache_address = ((device.memory.icache[line_index].tag
         | (device.memory.icache[line_index].index) as u32)
-        & 0x1ffffffc) as u64;
+        & TAG_MASK) as u64;
     for i in 0..8 {
         device.memory.memory_map_write[(cache_address >> 16) as usize](
             device,
@@ -47,7 +53,7 @@ pub fn icache_fill(device: &mut device::Device, line_index: usize, phys_address:
     device.memory.icache[line_index].tag = (phys_address & !0xFFF) as u32;
     let cache_address = ((device.memory.icache[line_index].tag
         | (device.memory.icache[line_index].index) as u32)
-        & 0x1ffffffc) as u64;
+        & TAG_MASK) as u64;
     for i in 0..8 {
         device.memory.icache[line_index].words[i as usize] = device.memory.memory_map_read
             [(cache_address >> 16) as usize](
@@ -59,6 +65,8 @@ pub fn icache_fill(device: &mut device::Device, line_index: usize, phys_address:
         device.memory.icache[line_index].instruction[i as usize] =
             device::cpu::decode_opcode(device, device.memory.icache[line_index].words[i as usize]);
     }
+    #[cfg(feature = "modloader")]
+    crate::modloader::trap_line(device, line_index);
 }
 
 pub fn icache_fetch(device: &mut device::Device, phys_address: u64) {
@@ -75,7 +83,7 @@ pub fn icache_fetch(device: &mut device::Device, phys_address: u64) {
 
 pub fn dcache_hit(device: &device::Device, line_index: usize, phys_address: u64) -> bool {
     device.memory.dcache[line_index].valid
-        && (device.memory.dcache[line_index].tag & 0x1ffffffc) == (phys_address & !0xFFF) as u32
+        && (device.memory.dcache[line_index].tag & TAG_MASK) == (phys_address & !0xFFF) as u32
 }
 
 pub fn dcache_writeback(device: &mut device::Device, line_index: usize) {
@@ -85,7 +93,7 @@ pub fn dcache_writeback(device: &mut device::Device, line_index: usize) {
 
     let cache_address = ((device.memory.dcache[line_index].tag
         | (device.memory.dcache[line_index].index) as u32)
-        & 0x1ffffffc) as u64;
+        & TAG_MASK) as u64;
 
     for i in 0..4 {
         device.memory.memory_map_write[(cache_address >> 16) as usize](
@@ -106,7 +114,7 @@ fn dcache_fill(device: &mut device::Device, line_index: usize, phys_address: u64
     device.memory.dcache[line_index].tag = (phys_address & !0xFFF) as u32;
     let cache_address = ((device.memory.dcache[line_index].tag
         | (device.memory.dcache[line_index].index) as u32)
-        & 0x1ffffffc) as u64;
+        & TAG_MASK) as u64;
 
     for i in 0..4 {
         device.memory.dcache[line_index].words[i as usize] = device.memory.memory_map_read

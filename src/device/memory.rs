@@ -21,6 +21,11 @@ pub const MM_PIF_MEM: usize = 0x1fc00000;
 const MM_IS_VIEWER: usize = 0x13ff0000;
 pub const MM_SC64_BUFFER: usize = 0x1ffe0000;
 const MM_SC64_REGS: usize = 0x1fff0000;
+pub const MEMORY_MAP_PAGES: usize = if cfg!(feature = "modloader") {
+    0x2800
+} else {
+    0x2000
+};
 
 #[derive(PartialEq)]
 pub enum AccessType {
@@ -41,11 +46,11 @@ pub enum AccessSize {
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Memory {
     #[serde(skip, default = "savestates::default_memory_read_fast")]
-    pub fast_read: [fn(&device::Device, u64, AccessSize) -> u32; 0x2000], // fast_read is used for lookups that try to detect idle loops
+    pub fast_read: [fn(&device::Device, u64, AccessSize) -> u32; MEMORY_MAP_PAGES], // fast_read is used for lookups that try to detect idle loops
     #[serde(skip, default = "savestates::default_memory_read")]
-    pub memory_map_read: [fn(&mut device::Device, u64, AccessSize) -> u32; 0x2000],
+    pub memory_map_read: [fn(&mut device::Device, u64, AccessSize) -> u32; MEMORY_MAP_PAGES],
     #[serde(skip, default = "savestates::default_memory_write")]
-    pub memory_map_write: [fn(&mut device::Device, u64, u32, u32); 0x2000],
+    pub memory_map_write: [fn(&mut device::Device, u64, u32, u32); MEMORY_MAP_PAGES],
     #[serde(with = "serde_big_array::BigArray")]
     pub icache: [device::cache::ICache; 512],
     #[serde(with = "serde_big_array::BigArray")]
@@ -72,6 +77,10 @@ pub fn translate_address(
         } else {
             return device::tlb::get_physical_address(device, address, access_type);
         }
+    }
+    #[cfg(feature = "modloader")]
+    if let Some(translated) = crate::modloader::translate_ram_extension(address) {
+        return translated;
     }
     (address & 0x1FFFFFFF, address & 0x20000000 == 0, false)
 }
@@ -179,4 +188,6 @@ pub fn init(device: &mut device::Device) {
             device.memory.memory_map_write[i] = device::cart::sc64::write_regs;
         }
     }
+    #[cfg(feature = "modloader")]
+    crate::modloader::map_ram_alias(device);
 }

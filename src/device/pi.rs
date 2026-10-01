@@ -48,7 +48,7 @@ pub fn read_regs(
     match reg as usize {
         PI_WR_LEN_REG | PI_RD_LEN_REG => 0x7F,
         PI_CART_ADDR_REG => device.pi.regs[reg as usize] & 0xFFFFFFFE,
-        PI_DRAM_ADDR_REG => device.pi.regs[reg as usize] & 0xFFFFFE,
+        PI_DRAM_ADDR_REG => device.pi.regs[reg as usize] & (device::rdram::RDRAM_MASK as u32 & !1),
         _ => device.pi.regs[reg as usize],
     }
 }
@@ -57,7 +57,7 @@ fn dma_read(device: &mut device::Device) {
     let handler = get_handler(device.pi.regs[PI_CART_ADDR_REG]);
 
     let cart_addr = device.pi.regs[PI_CART_ADDR_REG] & !1;
-    let dram_addr = device.pi.regs[PI_DRAM_ADDR_REG] & 0xFFFFFE;
+    let dram_addr = device.pi.regs[PI_DRAM_ADDR_REG] & (device::rdram::RDRAM_MASK as u32 & !1);
     let mut length = (device.pi.regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
 
     /* PI seems to treat the first 128 bytes differently, see https://n64brew.dev/wiki/Peripheral_Interface#Unaligned_DMA_transfer */
@@ -80,7 +80,7 @@ fn dma_write(device: &mut device::Device) {
     let handler = get_handler(device.pi.regs[PI_CART_ADDR_REG]);
 
     let cart_addr = device.pi.regs[PI_CART_ADDR_REG] & !1;
-    let dram_addr = device.pi.regs[PI_DRAM_ADDR_REG] & 0xFFFFFE;
+    let dram_addr = device.pi.regs[PI_DRAM_ADDR_REG] & (device::rdram::RDRAM_MASK as u32 & !1);
     let mut length = (device.pi.regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
 
     /* PI seems to treat the first 128 bytes differently, see https://n64brew.dev/wiki/Peripheral_Interface#Unaligned_DMA_transfer */

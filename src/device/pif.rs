@@ -232,7 +232,7 @@ pub fn connect_pif_channels(device: &mut device::Device) {
     device.pif.channels[4].process = Some(device::cart::process)
 }
 
-fn get_default_handler(device: &device::Device) -> device::controller::PakHandler {
+pub(crate) fn get_default_handler(device: &device::Device) -> device::controller::PakHandler {
     if device.ui.game_id == "NCT" {
         // Chameleon Twist does not support the mempak
         device::controller::PakHandler {
@@ -291,6 +291,10 @@ pub fn init(device: &mut device::Device) {
     }
     if device.ui.config.input.emulate_vru && device.netplay.is_none() {
         device.pif.channels[3].pak_handler = None;
+    }
+    #[cfg(feature = "modloader")]
+    if device.modloader.is_some() {
+        crate::ui::input::apply_paks(device);
     }
 }
 

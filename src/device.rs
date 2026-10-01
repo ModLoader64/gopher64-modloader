@@ -54,6 +54,18 @@ pub fn run_game(
     ra_config: retroachievements::RAConfig,
     netplay_config: Option<netplay::NetplayConfig>,
 ) {
+    prepare_game(device, rom_contents, &game_settings);
+    start_game(
+        device,
+        rom_contents,
+        game_settings,
+        ra_config,
+        netplay_config,
+    );
+}
+
+// ModLoader: map RAM before starting the game
+pub fn prepare_game(device: &mut Device, rom_contents: &[u8], game_settings: &ui::GameSettings) {
     device.cpu.overclock = game_settings.overclock;
     if game_settings.disable_expansion_pak {
         device.rdram.size = 0x400000;
@@ -67,8 +79,20 @@ pub fn run_game(
 
     // rdram pointer is shared with parallel-rdp and retroachievements
     rdram::init(device);
+}
 
+pub fn start_game(
+    device: &mut Device,
+    rom_contents: &[u8],
+    game_settings: ui::GameSettings,
+    ra_config: retroachievements::RAConfig,
+    netplay_config: Option<netplay::NetplayConfig>,
+) {
     ui::video::init(device, netplay_config.is_some());
+    #[cfg(feature = "modloader")]
+    if ui::video::failed(&device.ui) {
+        return;
+    }
     ui::audio::init(device);
     ui::input::init(&mut device.ui);
 
@@ -109,6 +133,8 @@ pub fn run_game(
     cpu::init(device);
 
     ui::storage::init(&mut device.ui, &device.cart.rom);
+    #[cfg(feature = "modloader")]
+    crate::modloader::redirect_saves(device);
     ui::storage::load_saves(&mut device.ui, &mut device.netplay);
     ui::storage::format_saves(device);
 
@@ -137,6 +163,10 @@ fn set_rng() -> rand::rngs::Xoshiro256PlusPlus {
 
 fn init_rng_rtc(device: &mut Device) {
     let mut rng_seed = set_rng().next_u64();
+    #[cfg(feature = "modloader")]
+    if device.modloader.is_some() {
+        rng_seed = 0;
+    }
     if let Some(netplay) = &mut device.netplay {
         if netplay.player_number == 0 {
             netplay::send_rng(netplay, rng_seed);
@@ -185,6 +215,7 @@ fn swap_rom(contents: Vec<u8>) -> Option<Vec<u8>> {
     }
 }
 
+#[cfg(feature = "standalone")]
 pub fn get_rom_contents(file_path: &std::path::PathBuf) -> Option<Vec<u8>> {
     let mut contents = vec![];
     if file_path
@@ -271,6 +302,9 @@ pub struct SpeedLimiter {
 pub struct Device {
     #[serde(skip)]
     pub netplay: Option<netplay::Netplay>,
+    #[cfg(feature = "modloader")]
+    #[serde(skip)]
+    pub modloader: Option<crate::modloader::Context>,
     #[serde(skip)]
     pub ui: ui::Ui,
     pub speed_limiter: SpeedLimiter,
@@ -330,6 +364,8 @@ impl Device {
         }
         Box::new(Device {
             netplay: None,
+            #[cfg(feature = "modloader")]
+            modloader: None,
             ui: if with_ui {
                 ui::Ui::new()
             } else {
@@ -465,9 +501,9 @@ impl Device {
                 },
             },
             memory: memory::Memory {
-                fast_read: [unmapped::read_mem_fast; 0x2000],
-                memory_map_read: [unmapped::read_mem; 0x2000],
-                memory_map_write: [unmapped::write_mem; 0x2000],
+                fast_read: [unmapped::read_mem_fast; memory::MEMORY_MAP_PAGES],
+                memory_map_read: [unmapped::read_mem; memory::MEMORY_MAP_PAGES],
+                memory_map_write: [unmapped::write_mem; memory::MEMORY_MAP_PAGES],
                 icache: [cache::ICache {
                     valid: false,
                     index: 0,

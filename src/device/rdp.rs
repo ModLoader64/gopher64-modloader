@@ -87,7 +87,7 @@ pub fn write_regs_dpc(device: &mut device::Device, address: u64, value: u32, mas
             if (device.rdp.regs_dpc[DPC_STATUS_REG] & DPC_STATUS_START_VALID) == 0 {
                 device::memory::masked_write_32(
                     &mut device.rdp.regs_dpc[reg as usize],
-                    value & 0xFFFFF8,
+                    value & (device::rdram::RDRAM_MASK as u32 & !7),
                     mask,
                 )
             }
@@ -96,7 +96,7 @@ pub fn write_regs_dpc(device: &mut device::Device, address: u64, value: u32, mas
         DPC_END_REG => {
             device::memory::masked_write_32(
                 &mut device.rdp.regs_dpc[reg as usize],
-                value & 0xFFFFF8,
+                value & (device::rdram::RDRAM_MASK as u32 & !7),
                 mask,
             );
             if (device.rdp.regs_dpc[DPC_STATUS_REG] & DPC_STATUS_START_VALID) != 0 {
@@ -199,5 +199,7 @@ pub fn rdp_interrupt_event(device: &mut device::Device) {
     device.rdp.regs_dpc[DPC_STATUS_REG] &=
         !(DPC_STATUS_START_GCLK | DPC_STATUS_PIPE_BUSY | DPC_STATUS_CMD_BUSY);
 
+    #[cfg(feature = "modloader")]
+    crate::modloader::rdp_full_sync(device);
     device::mi::set_rcp_interrupt(device, device::mi::MI_INTR_DP)
 }

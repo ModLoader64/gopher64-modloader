@@ -1,6 +1,6 @@
 [submodule "parallel-rdp/parallel-rdp-standalone"]
 	path = parallel-rdp/parallel-rdp-standalone
-	url = https://github.com/gopher64/parallel-rdp-standalone.git
+	url = https://github.com/ModLoader64/parallel-rdp-standalone-modloader.git
 	branch = gopher64
 [submodule "src/compat/sse2neon"]
 	path = src/compat/sse2neon
@@ -13,3 +13,9 @@
 	path = android-project/libadrenotools
 	url = https://github.com/gopher64/libadrenotools.git
 	branch = gopher64
+[submodule "rt64"]
+	path = rt64
+	url = https://github.com/ModLoader64/rt64-modloader.git
+[submodule "modloader-abi"]
+	path = modloader-abi
+	url = https://github.com/ModLoader64/ModLoader-ABI.git

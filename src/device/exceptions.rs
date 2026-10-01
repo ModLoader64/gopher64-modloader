@@ -154,6 +154,9 @@ pub fn reset_event(device: &mut device::Device) {
     device::pif::reset_pif(device, true);
 
     ui::video::onscreen_message("Game reset", ui::video::MESSAGE_LENGTH_MESSAGE_SHORT);
+
+    #[cfg(feature = "modloader")]
+    crate::modloader::reset(device);
 }
 
 fn exception_general(device: &mut device::Device, vector_offset: u32) {

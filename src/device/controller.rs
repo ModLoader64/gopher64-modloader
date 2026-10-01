@@ -154,6 +154,11 @@ fn data_crc(device: &device::Device, data_offset: usize, size: usize) -> u8 {
 }
 
 pub fn pak_switch_event(device: &mut device::Device) {
+    #[cfg(feature = "modloader")]
+    if device.modloader.is_some() {
+        ui::input::finish_pak_switch(device);
+        return;
+    }
     for (i, channel) in device.pif.channels.iter_mut().enumerate() {
         if channel.change_pak != PakType::None {
             //stop rumble if it is on
