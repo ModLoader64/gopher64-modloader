@@ -144,7 +144,7 @@ fn do_dma(device: &mut device::Device, dma: RspDma) {
     let skip = (l >> 20) & 0xff8;
 
     let mut mem_addr = dma.memaddr & 0xff8;
-    let mut dram_addr = dma.dramaddr & 0xfffff8;
+    let mut dram_addr = dma.dramaddr & (device::rdram::RDRAM_MASK as u32 & !7);
     let offset = dma.memaddr & 0x1000;
 
     ui::video::check_framebuffers(dram_addr, count * (length + skip) - skip);
@@ -460,6 +460,10 @@ fn update_sp_status(device: &mut device::Device, w: u32) {
     if device.rsp.regs[SP_STATUS_REG] & SP_STATUS_HALT == 0 && was_halted {
         device.rsp.cpu.broken = false;
         device.rsp.cpu.halted = false;
+        #[cfg(feature = "modloader")]
+        if crate::modloader::rsp_task_starting(device) {
+            return;
+        }
         do_task(device);
     }
 }
@@ -478,8 +482,14 @@ fn do_task(device: &mut device::Device) {
 }
 
 pub fn rsp_event(device: &mut device::Device) {
+    #[cfg(feature = "modloader")]
+    if crate::modloader::hle_task_waiting(device) {
+        return;
+    }
     if device.rsp.cpu.broken {
         device.rsp.regs[SP_STATUS_REG] |= SP_STATUS_HALT | SP_STATUS_BROKE;
+        #[cfg(feature = "modloader")]
+        crate::modloader::rsp_broke(device);
 
         if device.rsp.regs[SP_STATUS_REG] & SP_STATUS_INTR_BREAK != 0 {
             device::mi::set_rcp_interrupt(device, device::mi::MI_INTR_SP)

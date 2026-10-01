@@ -221,6 +221,8 @@ pub fn map_instructions(device: &mut device::Device) {
         device::cop0::reserved,            // 30
         device::cop0::reserved,            // 31
     ];
+    #[cfg(feature = "modloader")]
+    crate::modloader::map_instructions(device);
 }
 
 pub fn init(device: &mut device::Device) {
@@ -254,6 +256,13 @@ pub fn run(device: &mut device::Device) {
     device.cpu.running = true;
     while device.cpu.running {
         device.cpu.gpr[0] = 0; // gpr 0 is read only
+        #[cfg(feature = "modloader")]
+        {
+            crate::modloader::before_instruction(device);
+            if !device.cpu.running {
+                break;
+            }
+        }
         let (cached, err);
         (device.cpu.pc_phys, cached, err) = device::memory::translate_address(
             device,
@@ -272,6 +281,10 @@ pub fn run(device: &mut device::Device) {
                 device.cpu.pc_phys,
                 device::memory::AccessSize::Word,
             );
+            #[cfg(feature = "modloader")]
+            if crate::modloader::before_uncached_instruction(device) {
+                continue;
+            }
             device::cpu::decode_opcode(device, opcode)(device, opcode);
         }
 

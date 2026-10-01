@@ -15,7 +15,11 @@ const RDRAM_MODE_REG: usize = 3;
 //const RDRAM_DEVICE_MANUF_REG: usize = 9;
 pub const RDRAM_REGS_COUNT: usize = 10;
 
-pub const RDRAM_MASK: usize = 0xFFFFFF;
+pub const RDRAM_MASK: usize = if cfg!(feature = "modloader") {
+    0x7FFFFFF
+} else {
+    0xFFFFFF
+};
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Rdram {
@@ -66,6 +70,7 @@ pub fn read_mem(
 }
 
 pub fn write_mem(device: &mut device::Device, address: u64, value: u32, mask: u32) {
+    let address = address & RDRAM_MASK as u64;
     ui::video::check_framebuffers(address as u32, 4);
 
     let mut data = u32::from_ne_bytes(

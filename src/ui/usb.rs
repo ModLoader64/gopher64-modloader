@@ -4,12 +4,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 const DATATYPE_TCPTEST: u32 = 0x07;
 const DATATYPE_ROMUPLOAD: u32 = 0x08;
 
-#[derive(Clone, Debug)]
-pub struct UsbData {
-    pub data: Vec<u8>,
-    pub data_type: u32,
-    pub data_size: u32,
-}
+pub use crate::ui_common::UsbData;
 
 fn respond_to_handshake(usb_tx: &tokio::sync::mpsc::UnboundedSender<UsbData>, data: Vec<u8>) {
     if let Ok(data) = String::from_utf8(data)

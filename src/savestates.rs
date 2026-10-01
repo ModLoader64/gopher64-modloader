@@ -1,6 +1,7 @@
 use crate::{cheats, device, retroachievements, ui};
 #[cfg(target_arch = "aarch64")]
 use device::__m128i;
+use device::memory::MEMORY_MAP_PAGES;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 #[cfg(target_arch = "x86_64")]
@@ -233,8 +234,16 @@ pub fn load_savestate(device: &mut device::Device, rewind: bool, rewind_frame: O
         } else {
             None
         }
-    } else if let Ok(savestate) = std::fs::read(&device.ui.storage.paths.savestate_file_path)
-        && let Ok(device_data) = ui::storage::decompress_file(&savestate, "device")
+    } else if let Ok(savestate) = std::fs::read(&device.ui.storage.paths.savestate_file_path) {
+        decode_savestate(savestate)
+    } else {
+        None
+    };
+    apply_savestate(device, state_data, rewind);
+}
+
+pub fn decode_savestate(savestate: Vec<u8>) -> Option<SavestateData> {
+    if let Ok(device_data) = ui::storage::decompress_file(&savestate, "device")
         && let Ok(saves_data) = ui::storage::decompress_file(&savestate, "saves")
         && let Ok(rdp_state) = ui::storage::decompress_file(&savestate, "rdp_state")
         && let Ok(ra_state) = ui::storage::decompress_file(&savestate, "ra_state")
@@ -249,10 +258,18 @@ pub fn load_savestate(device: &mut device::Device, rewind: bool, rewind_frame: O
         })
     } else {
         None
-    };
+    }
+}
 
+pub fn apply_savestate(
+    device: &mut device::Device,
+    state_data: Option<SavestateData>,
+    rewind: bool,
+) -> bool {
     if let Some(mut state) = state_data
         && device.rdram.size == state.device.rdram.size
+        && device.rdram.mem.len() == state.device.rdram.mem.len()
+        && (state.rdp_state.is_empty() || state.rdp_state.len() == ui::video::state_size())
     {
         if device.netplay.is_none() {
             ui::video::idle();
@@ -348,7 +365,10 @@ pub fn load_savestate(device: &mut device::Device, rewind: bool, rewind_frame: O
         }
 
         ui::audio::update_freq(device);
-        ui::video::load_state(device, state.rdp_state.as_ptr());
+        if !state.rdp_state.is_empty() {
+            // ModLoader: empty in RT64 sessions
+            ui::video::load_state(device, state.rdp_state.as_ptr());
+        }
 
         if !state.ra_state.is_empty() {
             retroachievements::load_state(state.ra_state.as_ptr(), state.ra_state.len());
@@ -390,7 +410,9 @@ pub fn load_savestate(device: &mut device::Device, rewind: bool, rewind_frame: O
             )
         };
         ui::video::onscreen_message(&message, length);
+        return false;
     }
+    true
 }
 
 pub fn default_pak_handler() -> fn(&mut device::Device, usize, u16, usize, usize) {
@@ -409,15 +431,15 @@ where
 }
 
 pub fn default_memory_read_fast()
--> [fn(&device::Device, u64, device::memory::AccessSize) -> u32; 0x2000] {
-    [device::unmapped::read_mem_fast; 0x2000]
+-> [fn(&device::Device, u64, device::memory::AccessSize) -> u32; MEMORY_MAP_PAGES] {
+    [device::unmapped::read_mem_fast; MEMORY_MAP_PAGES]
 }
 
 pub fn default_memory_read()
--> [fn(&mut device::Device, u64, device::memory::AccessSize) -> u32; 0x2000] {
-    [device::unmapped::read_mem; 0x2000]
+-> [fn(&mut device::Device, u64, device::memory::AccessSize) -> u32; MEMORY_MAP_PAGES] {
+    [device::unmapped::read_mem; MEMORY_MAP_PAGES]
 }
 
-pub fn default_memory_write() -> [fn(&mut device::Device, u64, u32, u32); 0x2000] {
-    [device::unmapped::write_mem; 0x2000]
+pub fn default_memory_write() -> [fn(&mut device::Device, u64, u32, u32); MEMORY_MAP_PAGES] {
+    [device::unmapped::write_mem; MEMORY_MAP_PAGES]
 }

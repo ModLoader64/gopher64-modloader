@@ -23,6 +23,9 @@ pub fn write_mem(device: &mut device::Device, address: u64, value: u32, mask: u3
             &device.cart.is_viewer_buffer[0x20_usize..(0x20 + length) as usize],
         );
         if let Ok(data) = data {
+            #[cfg(feature = "modloader")]
+            crate::modloader::debug_output(data.to_owned(), device);
+            #[cfg(not(feature = "modloader"))]
             print!("{}", data);
         }
     } else {

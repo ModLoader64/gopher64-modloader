@@ -184,7 +184,7 @@ jobs:
         run: |
           cargo install cargo-bundle
           brew install molten-vk
-          cargo build --profile ${{ env.BUILD_PROFILE }} --no-default-features -v --target=${{ matrix.target }}
+          cargo build --profile ${{ env.BUILD_PROFILE }} --no-default-features --features standalone -v --target=${{ matrix.target }}
           mv target/${{ matrix.target }}/${{ env.BUILD_DIR }}/gopher64 target/${{ matrix.target }}/${{ env.BUILD_DIR }}/gopher64-cli
           cargo bundle --profile ${{ env.BUILD_PROFILE }} --target=${{ matrix.target }} --format osx
           cp target/${{ matrix.target }}/${{ env.BUILD_DIR }}/gopher64-cli target/${{ matrix.target }}/${{ env.BUILD_DIR }}/bundle/osx/Gopher64.app/Contents/MacOS/gopher64-cli

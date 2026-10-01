@@ -164,6 +164,8 @@ pub fn vertical_interrupt_event(device: &mut device::Device) {
     }
 
     retroachievements::do_frame();
+    #[cfg(feature = "modloader")]
+    crate::modloader::vertical_interrupt(device);
 
     /* toggle vi field if in interlaced mode */
     device.vi.field ^= (device.vi.regs[VI_STATUS_REG] >> 6) & 0x1;

@@ -1,19 +1,29 @@
 #![deny(warnings)]
+#![cfg_attr(feature = "modloader", allow(dead_code, unused_imports))]
 
 mod cheats;
 mod device;
+#[cfg(feature = "modloader")]
+mod modloader;
+#[cfg_attr(feature = "modloader", path = "modloader_ui/netplay.rs")]
 mod netplay;
+#[cfg_attr(feature = "modloader", path = "modloader_ui/retroachievements.rs")]
 mod retroachievements;
 mod savestates;
+#[cfg_attr(feature = "modloader", path = "modloader_ui/mod.rs")]
 mod ui;
+mod ui_common;
+#[cfg(feature = "standalone")]
 use clap::Parser;
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "gui"))]
 use slint::ComponentHandle;
+#[cfg(feature = "standalone")]
 use std::io::Error;
 
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "gui"))]
 use ui::android;
 
+#[cfg(feature = "standalone")]
 /// N64 emulator
 #[derive(Parser, Debug)]
 #[command(author, version=env!("GIT_DESCRIBE"), about, long_about = None, arg_required_else_help = if cfg!(feature = "gui") { false } else { true })]
@@ -106,6 +116,7 @@ fn set_app_id() {
     }
 }
 
+#[cfg(feature = "standalone")]
 pub fn create_runtime() -> (tokio::sync::oneshot::Sender<()>, tokio::runtime::Handle) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let (close_tx, close_rx) = tokio::sync::oneshot::channel::<()>();
@@ -119,6 +130,7 @@ pub fn create_runtime() -> (tokio::sync::oneshot::Sender<()>, tokio::runtime::Ha
     (close_tx, rx.blocking_recv().unwrap())
 }
 
+#[cfg(feature = "standalone")]
 pub fn run(args: Args, arg_count: usize) -> std::io::Result<()> {
     let dirs = ui::get_dirs();
 
@@ -352,7 +364,7 @@ pub fn run(args: Args, arg_count: usize) -> std::io::Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "gui"))]
 #[unsafe(no_mangle)]
 fn android_main(app: slint::android::AndroidApp) {
     let (close_tx, handle) = create_runtime();

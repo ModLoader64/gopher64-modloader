@@ -18,6 +18,8 @@ pub mod video;
 #[cfg(all(feature = "gui", not(target_os = "android")))]
 pub mod vru;
 
+pub use crate::ui_common::{Dirs, GameSettings, Storage, Usb};
+
 pub const APP_ID: &str = "io.github.gopher64.gopher64";
 
 pub fn install_default_crypto_provider() {
@@ -53,13 +55,6 @@ pub static WEB_CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLoc
     builder.build().unwrap()
 });
 
-#[derive(Default, Clone)]
-pub struct Dirs {
-    pub config_dir: std::path::PathBuf,
-    pub data_dir: std::path::PathBuf,
-    pub cache_dir: std::path::PathBuf,
-}
-
 #[derive(Default)]
 pub struct Audio {
     pub audio_stream: *mut sdl3_sys::audio::SDL_AudioStream,
@@ -79,14 +74,6 @@ unsafe impl Send for Input {}
 unsafe impl Sync for Input {}
 
 #[derive(Default)]
-pub struct Storage {
-    pub save_type: Vec<storage::SaveTypes>,
-    pub paths: storage::Paths,
-    pub saves: storage::Saves,
-    pub save_state_slot: u32,
-}
-
-#[derive(Default)]
 pub struct Video {
     pub window: *mut sdl3_sys::video::SDL_Window,
     pub fullscreen: bool,
@@ -99,20 +86,6 @@ pub struct Video {
 
 unsafe impl Send for Video {}
 unsafe impl Sync for Video {}
-
-#[derive(Default)]
-pub struct Usb {
-    pub usb_tx: Option<tokio::sync::mpsc::UnboundedSender<usb::UsbData>>,
-    pub cart_rx: Option<tokio::sync::mpsc::UnboundedReceiver<usb::UsbData>>,
-}
-
-#[derive(Clone)]
-pub struct GameSettings {
-    pub overclock: bool,
-    pub disable_expansion_pak: bool,
-    pub cheats: rustc_hash::FxHashMap<String, Option<String>>,
-    pub load_savestate_slot: Option<u32>,
-}
 
 #[derive(Default)]
 pub struct Ui {

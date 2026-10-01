@@ -1,12 +1,20 @@
+#[cfg(feature = "modloader")]
+mod modloader_build;
+
 fn main() {
+    assert!(
+        cfg!(feature = "standalone") != cfg!(feature = "modloader"),
+        "Select one product: the default GUI, --no-default-features --features standalone for the CLI, or --no-default-features --features modloader --lib for the adapter"
+    );
     println!("cargo::rerun-if-changed=parallel-rdp");
+    #[cfg(feature = "standalone")]
     println!("cargo::rerun-if-changed=retroachievements");
     println!("cargo::rerun-if-changed=src/compat");
-    println!("cargo::rerun-if-changed=data/translations");
-    println!("cargo::rerun-if-changed=data/ui");
 
     #[cfg(feature = "gui")]
     {
+        println!("cargo::rerun-if-changed=data/translations");
+        println!("cargo::rerun-if-changed=data/ui");
         let slint_config = slint_build::CompilerConfiguration::new()
             .with_bundled_translations("data/translations");
         slint_build::compile_with_config("src/ui/gui/appwindow.slint", slint_config).unwrap();
@@ -29,6 +37,7 @@ fn main() {
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_device.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_dump_write.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_renderer.cpp")
+        .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_upscaling.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/video_interface.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/breadcrumbs.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/buffer.cpp")
@@ -55,8 +64,6 @@ fn main() {
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/semaphore_manager.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/shader.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/texture/texture_format.cpp")
-        .file("parallel-rdp/parallel-rdp-standalone/vulkan/wsi.cpp")
-        .file("parallel-rdp/parallel-rdp-standalone/vulkan/wsi_pacer.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/util/arena_allocator.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/util/logging.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/util/thread_id.cpp")
@@ -67,12 +74,18 @@ fn main() {
         .file("parallel-rdp/parallel-rdp-standalone/util/thread_name.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/util/slab_allocator.cpp")
         .file("parallel-rdp/interface.cpp")
-        .file("parallel-rdp/wsi_platform.cpp")
         .include("parallel-rdp/parallel-rdp-standalone/parallel-rdp")
         .include("parallel-rdp/parallel-rdp-standalone/volk")
         .include("parallel-rdp/parallel-rdp-standalone/vulkan")
         .include("parallel-rdp/parallel-rdp-standalone/vulkan-headers/include")
-        .include("parallel-rdp/parallel-rdp-standalone/util")
+        .include("parallel-rdp/parallel-rdp-standalone/util");
+
+    #[cfg(feature = "standalone")]
+    rdp_build
+        .file("parallel-rdp/presentation_sdl.cpp")
+        .file("parallel-rdp/wsi_platform.cpp")
+        .file("parallel-rdp/parallel-rdp-standalone/vulkan/wsi.cpp")
+        .file("parallel-rdp/parallel-rdp-standalone/vulkan/wsi_pacer.cpp")
         .include(
             std::path::PathBuf::from(std::env::var("DEP_SDL3_OUT_DIR").unwrap()).join("include"),
         )
@@ -81,7 +94,9 @@ fn main() {
                 .join("include"),
         );
 
+    #[cfg(feature = "standalone")]
     let mut retroachievements_build = cc::Build::new();
+    #[cfg(feature = "standalone")]
     retroachievements_build
         .flag("-Wno-unused-parameter")
         .include("retroachievements/rcheevos/include")
@@ -131,12 +146,14 @@ fn main() {
     volk_build.flag(opt_flag);
     rdp_build.flag(opt_flag);
     simd_build.flag(opt_flag);
+    #[cfg(feature = "standalone")]
     retroachievements_build.flag(opt_flag);
 
     if os == "windows" {
         volk_build.flag("-DVK_USE_PLATFORM_WIN32_KHR");
         rdp_build.flag("-DVK_USE_PLATFORM_WIN32_KHR");
 
+        #[cfg(feature = "standalone")]
         winresource::WindowsResource::new()
             .set_icon("data/icon/icon.ico")
             .compile()
@@ -153,17 +170,16 @@ fn main() {
         println!("cargo:rustc-link-lib=static=clang_rt.osx");
     }
 
-    volk_build.flag("-flto=thin");
-    rdp_build.flag("-flto=thin");
-    simd_build.flag("-flto=thin");
-    retroachievements_build.flag("-flto=thin");
-
+    #[cfg(feature = "modloader")]
+    modloader_build::build(&os, &mut rdp_build);
     volk_build.compile("volk");
     rdp_build.compile("parallel-rdp");
+    #[cfg(feature = "standalone")]
     retroachievements_build.compile("retroachievements");
 
     let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
+    #[cfg(feature = "standalone")]
     let mut retroachievements_builder = bindgen::Builder::default()
         .header("retroachievements/retroachievements.h")
         .allowlist_function("ra_init_client")
@@ -183,17 +199,20 @@ fn main() {
         .allowlist_function("ra_load_state")
         .allowlist_function("ra_get_rich_presence");
 
+    #[cfg(feature = "standalone")]
     if cfg!(feature = "gui") {
         retroachievements_builder = retroachievements_builder
             .allowlist_function("ra_logout_user")
             .allowlist_function("ra_get_username");
     }
 
+    #[cfg(feature = "standalone")]
     let retroachievements_bindings = retroachievements_builder
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
 
+    #[cfg(feature = "standalone")]
     retroachievements_bindings
         .write_to_file(out_path.join("retroachievements_bindings.rs"))
         .expect("Couldn't write bindings!");
@@ -312,6 +331,7 @@ fn main() {
     {
         println!("cargo:rustc-cfg=ra_hardcore_enabled");
     }
+    #[cfg(feature = "standalone")]
     if os == "android" {
         copy_dir_all(
             std::path::Path::new(sdl3_src::SOURCE_DIR)
@@ -322,6 +342,7 @@ fn main() {
     }
 }
 
+#[cfg(feature = "standalone")]
 fn copy_dir_all(
     src: impl AsRef<std::path::Path>,
     dst: impl AsRef<std::path::Path>,

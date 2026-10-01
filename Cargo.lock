@@ -2643,6 +2643,7 @@ dependencies = [
  "jni 0.22.4",
  "matchbox_socket",
  "mimalloc",
+ "modloader-abi",
  "obfstr",
  "open",
  "postcard",
@@ -4133,6 +4134,13 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "modloader-abi"
+version = "1.0.0"
+dependencies = [
+ "bindgen 0.73.2",
 ]
 
 [[package]]

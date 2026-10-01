@@ -179,18 +179,7 @@ pub fn play_audio(device: &device::Device, dram_addr: usize, length: u64) {
         return;
     }
 
-    let mut primary_buffer: Vec<i16> = vec![0; length as usize / 2];
-    let mut i = 0;
-    while i < length as usize / 2 {
-        // Left channel
-        primary_buffer[i] = *device.rdram.mem.get(dram_addr + (i * 2) + 2).unwrap_or(&0) as i16
-            | ((*device.rdram.mem.get(dram_addr + (i * 2) + 3).unwrap_or(&0) as i16) << 8);
-
-        // Right channel
-        primary_buffer[i + 1] = *device.rdram.mem.get(dram_addr + (i * 2)).unwrap_or(&0) as i16
-            | ((*device.rdram.mem.get(dram_addr + (i * 2) + 1).unwrap_or(&0) as i16) << 8);
-        i += 2;
-    }
+    let primary_buffer = crate::ui_common::audio_samples(&device.rdram.mem, dram_addr, length);
 
     let audio_queued =
         unsafe { sdl3_sys::audio::SDL_GetAudioStreamQueued(device.ui.audio.audio_stream) } as f64;
