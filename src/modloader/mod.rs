@@ -102,6 +102,7 @@ static ADAPTER_TABLE: AdapterTable = AdapterTable(PlatformAdapter {
     pokeMemory: Some(poke_memory),
     reset: Some(reset_game),
     platformCall: None,
+    setTextureSources: Some(set_texture_sources),
 });
 
 #[unsafe(no_mangle)]
@@ -398,8 +399,23 @@ extern "C" fn create(
 
 extern "C" fn destroy(adapter: *mut c_void) {
     if !adapter.is_null() {
+        unsafe { ui::video::rt64_set_texture_sources(std::ptr::null(), 0, 0) };
         drop(unsafe { Box::from_raw(adapter as *mut Adapter) });
     }
+}
+
+extern "C" fn set_texture_sources(
+    adapter: *mut c_void,
+    paths: *const *const c_char,
+    count: u32,
+    flags: u32,
+) -> i32 {
+    if adapter.is_null() {
+        return abi::MODLOADER_TEXTURE_ERROR as i32;
+    }
+    let adapter = unsafe { &mut *(adapter as *mut Adapter) };
+    let device = unsafe { &*adapter.shared.device_pointer(&raw mut *adapter.device) };
+    unsafe { ui::video::set_texture_sources(&device.ui, paths, count, flags) }
 }
 
 extern "C" fn run(adapter: *mut c_void) -> i32 {

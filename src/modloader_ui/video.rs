@@ -376,6 +376,30 @@ fn parallel_active() -> bool {
     )
 }
 
+pub unsafe fn set_texture_sources(
+    ui: &ui::Ui,
+    paths: *const *const c_char,
+    count: u32,
+    flags: u32,
+) -> i32 {
+    use modloader_abi::{
+        MODLOADER_TEXTURE_DISABLED, MODLOADER_TEXTURE_ERROR, MODLOADER_TEXTURE_PENDING,
+        MODLOADER_TEXTURE_UNSUPPORTED,
+    };
+    let state = unsafe { rt64_set_texture_sources(paths, count, flags) };
+    if state == MODLOADER_TEXTURE_DISABLED as i32 || state == MODLOADER_TEXTURE_ERROR as i32 {
+        return state;
+    }
+    match RENDERER.load(Ordering::Relaxed) {
+        RENDERER_RT64 => state,
+        RENDERER_UNDECIDED => MODLOADER_TEXTURE_PENDING as i32,
+        RENDERER_CLOSED if ui.config.video.renderer == ui::config::Renderer::Rt64 => {
+            MODLOADER_TEXTURE_PENDING as i32
+        }
+        _ => MODLOADER_TEXTURE_UNSUPPORTED as i32,
+    }
+}
+
 pub fn failed(ui: &ui::Ui) -> bool {
     ui.video.failed
 }
