@@ -12,6 +12,7 @@
 #include "hle/rt64_application.h"
 #include "plume_vulkan.h"
 #include "swap_chain.h"
+#include "textures.h"
 
 namespace {
 constexpr uint32_t gAddressMask = 0x7FFFFF8;
@@ -209,6 +210,7 @@ extern "C" int32_t rt64_open(const RT64_CORE* core, const RT64_CONFIG* config) {
     }
 
     sApplication->state->pauseOnSelfBranch = true;
+    Texture_Sources_Open(sApplication.get());
 
     return 1;
 }
@@ -218,6 +220,7 @@ extern "C" void rt64_close() {
         rt64_commit();
         sApplication->end();
         sApplication.reset();
+        Texture_Sources_Close();
     }
 }
 
@@ -225,6 +228,10 @@ extern "C" void rt64_commit() {
     if (sApplication != nullptr && sApplication->renderInterface != nullptr && sApplication->chosenGraphicsAPI == RT64::UserConfiguration::GraphicsAPI::Vulkan) {
         volkLoadInstance(static_cast<plume::VulkanInterface*>(sApplication->renderInterface.get())->instance);
     }
+}
+
+extern "C" int32_t rt64_set_texture_sources(const char* const* paths, uint32_t count, uint32_t flags) {
+    return Texture_Sources_Set(sApplication.get(), paths, count, flags);
 }
 
 extern "C" int32_t rt64_known_ucode(const uint8_t* rdram, uint32_t text, uint32_t data) {

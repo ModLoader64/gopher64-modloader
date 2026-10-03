@@ -44,6 +44,7 @@ uint32_t rt64_process_rdp();
 void rt64_update_screen();
 void rt64_discard();
 void rt64_set_user_config(const char* user_config);
+int32_t rt64_set_texture_sources(const char* const* paths, uint32_t count, uint32_t flags);
 
 #ifdef __cplusplus
 }

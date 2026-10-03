@@ -18,7 +18,7 @@ target_compile_definitions(plume PRIVATE PLUME_NO_VOLK_IMPLEMENTATION) # the ada
 get_directory_property(RT64_INCLUDES DIRECTORY "${rt64_source}" INCLUDE_DIRECTORIES)
 get_directory_property(RT64_DEFINITIONS DIRECTORY "${rt64_source}" COMPILE_DEFINITIONS)
 
-add_library(modloader_rt64 STATIC modloader_rt64.cpp swap_chain_vulkan.cpp)
+add_library(modloader_rt64 STATIC modloader_rt64.cpp swap_chain_vulkan.cpp textures.cpp)
 if (WIN32)
     target_sources(modloader_rt64 PRIVATE swap_chain_d3d12.cpp)
 endif ()
