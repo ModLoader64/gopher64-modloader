@@ -192,7 +192,7 @@ impl Settings {
         CString::new(rt64.to_string()).unwrap_or_default()
     }
 
-    fn flags(&self, key: &str) -> u32 {
+    fn flags(&self, key: &str) -> abi::ModLoader_Setting_Flags {
         match key {
             "rt64.resolutionMultiplier" if self.flag("rt64.windowSize") => SETTING_DISABLED,
             "rt64.aspectTarget" if self.value("rt64.aspectRatio") != "Manual" => SETTING_HIDDEN,
@@ -215,7 +215,7 @@ impl Settings {
             choices: description.choices.as_ptr(),
             value: self.values[index as usize].as_ptr(),
             type_: description.kind as u32,
-            flags: description.flags | self.flags(description.key.to_str().unwrap_or("")),
+            flags: (description.flags | self.flags(description.key.to_str().unwrap_or(""))) as u32,
             minimum: description.minimum,
             maximum: description.maximum,
         })
