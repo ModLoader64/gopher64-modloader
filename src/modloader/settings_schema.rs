@@ -143,7 +143,7 @@ pub(super) static DESCRIPTIONS: &[Description] = &[
     ),
     describe(
         c"rt64.windowSize",
-        c"Window size",
+        c"Resolution: Use Window Size",
         RT64,
         c"Renders as large as the window; off: at the resolution scale",
         SETTING_BOOL,
