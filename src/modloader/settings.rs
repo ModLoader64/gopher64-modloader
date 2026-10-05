@@ -192,12 +192,12 @@ impl Settings {
         CString::new(rt64.to_string()).unwrap_or_default()
     }
 
-    fn hidden(&self, key: &str) -> bool {
+    fn flags(&self, key: &str) -> u32 {
         match key {
-            "rt64.resolutionMultiplier" => self.flag("rt64.windowSize"),
-            "rt64.aspectTarget" => self.value("rt64.aspectRatio") != "Manual",
-            "rt64.refreshRateTarget" => self.value("rt64.refreshRate") != "Manual",
-            _ => false,
+            "rt64.resolutionMultiplier" if self.flag("rt64.windowSize") => SETTING_DISABLED,
+            "rt64.aspectTarget" if self.value("rt64.aspectRatio") != "Manual" => SETTING_HIDDEN,
+            "rt64.refreshRateTarget" if self.value("rt64.refreshRate") != "Manual" => SETTING_HIDDEN,
+            _ => 0,
         }
     }
 
@@ -215,12 +215,7 @@ impl Settings {
             choices: description.choices.as_ptr(),
             value: self.values[index as usize].as_ptr(),
             type_: description.kind as u32,
-            flags: (description.flags
-                | if self.hidden(description.key.to_str().unwrap_or("")) {
-                    SETTING_HIDDEN
-                } else {
-                    0
-                }) as u32,
+            flags: description.flags | self.flags(description.key.to_str().unwrap_or("")),
             minimum: description.minimum,
             maximum: description.maximum,
         })
