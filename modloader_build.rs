@@ -1,9 +1,13 @@
 use std::path::{Path, PathBuf};
 
-pub fn build(os: &str, rdp_build: &mut cc::Build) {
+pub fn build(os: &str, rdp_build: &mut cc::Build, volk_build: &mut cc::Build) {
     rdp_build
         .file("parallel-rdp/modloader_headless.cpp")
         .flag("-Wno-unused-variable");
+
+    if os == "linux" {
+        volk_build.define("VK_USE_PLATFORM_XLIB_KHR", None);
+    }
 
     let out_path = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
     generate_renderer_bindings(&out_path);
@@ -100,5 +104,12 @@ fn build_rt64(os: &str, out: &Path) {
 
         // RT64 loads dxcompiler.dll from the adapter's folder
         println!("cargo:rustc-cdylib-link-arg=/DELAYLOAD:dxcompiler.dll");
+    } else if os == "linux" {
+        let libraries = std::fs::read_to_string(out.join("system-libraries.txt"))
+            .expect("Unable to read RT64 system libraries");
+        for library in libraries.lines() {
+            println!("cargo:rustc-cdylib-link-arg={library}");
+        }
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-z,defs");
     }
 }

@@ -171,7 +171,7 @@ fn main() {
     }
 
     #[cfg(feature = "modloader")]
-    modloader_build::build(&os, &mut rdp_build);
+    modloader_build::build(&os, &mut rdp_build, &mut volk_build);
     volk_build.compile("volk");
     rdp_build.compile("parallel-rdp");
     #[cfg(feature = "standalone")]
