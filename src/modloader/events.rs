@@ -4,6 +4,29 @@ const VI_STATUS_REG: usize = 0;
 const VI_ORIGIN_REG: usize = 1;
 const VI_WIDTH_REG: usize = 2;
 
+#[derive(Clone, Copy, Default)]
+pub(super) enum BootState {
+    #[default]
+    Loading,
+    Entry(u32),
+    Started,
+}
+
+pub fn boot_dma(device: &mut device::Device, cart_address: u32, ram_address: u32) {
+    if cart_address == 0x1000
+        && let Some(context) = device.modloader.as_mut()
+        && matches!(context.boot, BootState::Loading)
+    {
+        context.boot = BootState::Entry(ram_address);
+    }
+}
+
+pub(super) fn start(device: &mut device::Device) {
+    device.modloader.as_mut().unwrap().boot = BootState::Started;
+    let time = emulated_time(device, false);
+    raise_event(device, EVENT_N64_START, time, std::ptr::null(), 0);
+}
+
 fn vi_payload(device: &device::Device) -> ViPayload {
     ViPayload {
         status: device.vi.regs[VI_STATUS_REG],
@@ -98,6 +121,7 @@ pub fn vertical_interrupt(device: &mut device::Device) {
 }
 
 pub(super) fn state_loaded(device: &mut device::Device) {
+    device.modloader.as_mut().unwrap().boot = BootState::Started;
     debug::clear_output(device);
     decode_icache(device);
     ui::video::state_loaded();
@@ -116,6 +140,9 @@ fn press_reset(device: &mut device::Device) {
 }
 
 pub fn reset(device: &mut device::Device) {
+    if let Some(context) = device.modloader.as_mut() {
+        context.boot = BootState::Loading;
+    }
     debug::flush_output(device);
     let time = emulated_time(device, false);
     raise_event(device, EVENT_RESET, time, std::ptr::null(), 0);

@@ -101,6 +101,8 @@ pub fn dma_write(
 ) -> u64 {
     dram_addr &= device::rdram::RDRAM_MASK as u32;
     cart_addr &= CART_MASK as u32;
+    #[cfg(feature = "modloader")]
+    crate::modloader::boot_dma(device, cart_addr, dram_addr);
     let mut i = dram_addr;
     let mut j = cart_addr;
     while i < dram_addr + length {

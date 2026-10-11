@@ -319,6 +319,12 @@ pub fn before_instruction(device: &mut device::Device) {
         device.cpu.running = false;
         return;
     }
+    if let events::BootState::Entry(address) = context.boot
+        && (device.cpu.pc as u32 & 0xDFFFFFFF) == (0x80000000 | address)
+    {
+        events::start(device);
+    }
+    let context = device.modloader.as_ref().unwrap();
     if context.breakpoints.step || context.breakpoints.mapped_execution {
         check_instruction(device);
     }

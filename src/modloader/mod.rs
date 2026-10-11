@@ -9,15 +9,15 @@ mod tasks;
 
 pub use breakpoints::{before_instruction, before_uncached_instruction, trap_line};
 pub use debug::debug_output;
-pub use events::{reset, vertical_interrupt};
+pub use events::{boot_dma, reset, vertical_interrupt};
 pub use memory::{map_ram_alias, translate_ram_extension};
 pub use modloader_abi::{ModLoader_Frame as Frame, ModLoader_Gpu_Image as GpuImage};
 pub use tasks::{hle_task_waiting, rdp_full_sync, rsp_broke, rsp_task_starting};
 
 use crate::{device, retroachievements, ui};
 use abi::n64::{
-    MODLOADER_EVENT_N64_RSP_TASK as EVENT_N64_RSP_TASK, ModLoader_N64_Cpu_State as CpuState,
-    ModLoader_N64_Vi as ViPayload,
+    MODLOADER_EVENT_N64_RSP_TASK as EVENT_N64_RSP_TASK, MODLOADER_EVENT_N64_START as EVENT_N64_START,
+    ModLoader_N64_Cpu_State as CpuState, ModLoader_N64_Vi as ViPayload,
 };
 use abi::{
     MODLOADER_ADAPTER_ABI_VERSION as ABI_VERSION, MODLOADER_BREAK_EXECUTE as BREAK_EXECUTE,
@@ -116,6 +116,7 @@ pub struct Context {
     callbacks: HostCallbacks,
     shared: Arc<SharedState>,
     breakpoints: Breakpoints,
+    boot: events::BootState,
     tasks: tasks::TaskState,
     debug_output: bool,
     debug_line: String,
@@ -351,6 +352,7 @@ extern "C" fn create(
         callbacks,
         shared: shared.clone(),
         breakpoints: Breakpoints::default(),
+        boot: events::BootState::default(),
         tasks: tasks::TaskState::default(),
         debug_output: settings.flag("emulation.debug_output"),
         debug_line: String::new(),
