@@ -434,7 +434,27 @@ fn stop(
     size: u64,
     value: u64,
 ) -> bool {
-    let hit = Break {
+    let additional_ids: Vec<u32> = if id == 0 {
+        Vec::new()
+    } else {
+        let start = normalize(address);
+        let end = start.saturating_add(size);
+        device.modloader.as_ref().map_or_else(Vec::new, |context| {
+            context
+                .breakpoints
+                .list
+                .iter()
+                .filter(|breakpoint| {
+                    breakpoint.id != id
+                        && breakpoint.access & access as u32 != 0
+                        && start < breakpoint.end
+                        && breakpoint.start < end
+                })
+                .map(|breakpoint| breakpoint.id)
+                .collect()
+        })
+    };
+    let mut hit = Break {
         id,
         access: access as u32,
         address: address & 0xFFFFFFFF,
@@ -446,14 +466,17 @@ fn stop(
     let pc = state.pc;
     with_host(device, |callbacks| {
         if let Some(handler) = callbacks.breakpoint {
-            unsafe {
-                handler(
-                    callbacks.host,
-                    &hit,
-                    &mut state as *mut CpuState as *mut c_void,
-                    size_of::<CpuState>() as u64,
-                )
-            };
+            for matching_id in std::iter::once(id).chain(additional_ids) {
+                hit.id = matching_id;
+                unsafe {
+                    handler(
+                        callbacks.host,
+                        &hit,
+                        &mut state as *mut CpuState as *mut c_void,
+                        size_of::<CpuState>() as u64,
+                    )
+                };
+            }
         }
     });
     apply_state(device, &state);

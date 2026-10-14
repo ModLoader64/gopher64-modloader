@@ -140,9 +140,19 @@ fn press_reset(device: &mut device::Device) {
 }
 
 pub fn reset(device: &mut device::Device) {
+    let mut hle_waiting = false;
     if let Some(context) = device.modloader.as_mut() {
         context.boot = BootState::Loading;
+        hle_waiting = context.tasks.hle_wait.is_some();
+        context.tasks = tasks::TaskState::default();
     }
+    if hle_waiting {
+        // abort the task
+        device::events::remove_event(device, device::events::EVENT_TYPE_SP);
+        device.rsp.regs[device::rsp_interface::SP_STATUS_REG] |= device::rsp_interface::SP_STATUS_HALT;
+        device.rsp.run_after_dma = false;
+    }
+    ui::video::state_loaded();
     debug::flush_output(device);
     let time = emulated_time(device, false);
     raise_event(device, EVENT_RESET, time, std::ptr::null(), 0);
