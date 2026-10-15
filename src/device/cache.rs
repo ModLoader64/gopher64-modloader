@@ -31,6 +31,10 @@ pub fn icache_hit(device: &device::Device, line_index: usize, phys_address: u64)
 }
 
 pub fn icache_writeback(device: &mut device::Device, line_index: usize) {
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth += 1;
+    }
     device::cop0::add_cycles(device, device::rdram::rdram_calculate_cycles(32));
 
     let cache_address = ((device.memory.icache[line_index].tag
@@ -44,9 +48,17 @@ pub fn icache_writeback(device: &mut device::Device, line_index: usize) {
             0xFFFFFFFF,
         );
     }
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth -= 1;
+    }
 }
 
 pub fn icache_fill(device: &mut device::Device, line_index: usize, phys_address: u64) {
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth += 1;
+    }
     device::cop0::add_cycles(device, 8);
 
     device.memory.icache[line_index].valid = true;
@@ -67,6 +79,10 @@ pub fn icache_fill(device: &mut device::Device, line_index: usize, phys_address:
     }
     #[cfg(feature = "modloader")]
     crate::modloader::trap_line(device, line_index);
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth -= 1;
+    }
 }
 
 pub fn icache_fetch(device: &mut device::Device, phys_address: u64) {
@@ -87,6 +103,10 @@ pub fn dcache_hit(device: &device::Device, line_index: usize, phys_address: u64)
 }
 
 pub fn dcache_writeback(device: &mut device::Device, line_index: usize) {
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth += 1;
+    }
     device::cop0::add_cycles(device, device::rdram::rdram_calculate_cycles(16));
 
     device.memory.dcache[line_index].dirty = false;
@@ -103,9 +123,17 @@ pub fn dcache_writeback(device: &mut device::Device, line_index: usize) {
             0xFFFFFFFF,
         );
     }
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth -= 1;
+    }
 }
 
 fn dcache_fill(device: &mut device::Device, line_index: usize, phys_address: u64) {
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth += 1;
+    }
     device::cop0::add_cycles(device, 7);
 
     device.memory.dcache[line_index].valid = true;
@@ -123,6 +151,10 @@ fn dcache_fill(device: &mut device::Device, line_index: usize, phys_address: u64
             cache_address | (i * 4),
             device::memory::AccessSize::Dcache,
         );
+    }
+    #[cfg(feature = "modloader")]
+    {
+        device.ui.timing.cache_miss_depth -= 1;
     }
 }
 

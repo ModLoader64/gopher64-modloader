@@ -273,6 +273,10 @@ pub fn run(device: &mut device::Device) {
             continue; // TLB exception
         }
 
+        #[cfg(feature = "modloader")]
+        {
+            device.ui.timing.instruction_active = true;
+        }
         if cached {
             device::cache::icache_fetch(device, device.cpu.pc_phys)
         } else {
@@ -283,6 +287,7 @@ pub fn run(device: &mut device::Device) {
             );
             #[cfg(feature = "modloader")]
             if crate::modloader::before_uncached_instruction(device) {
+                device.ui.timing.instruction_active = false;
                 continue;
             }
             device::cpu::decode_opcode(device, opcode)(device, opcode);
@@ -311,6 +316,10 @@ pub fn run(device: &mut device::Device) {
                 device.cpu.branch_state.state = State::Step
             }
             State::Exception => device.cpu.branch_state.state = State::Step,
+        }
+        #[cfg(feature = "modloader")]
+        {
+            device.ui.timing.instruction_active = false;
         }
         device::cop0::add_cycles(device, 1);
         if device.cpu.cop0.regs[device::cop0::COP0_COUNT_REG] > device.cpu.next_event_count {

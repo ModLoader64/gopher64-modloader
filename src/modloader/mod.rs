@@ -230,6 +230,12 @@ fn game_settings() -> ui::GameSettings {
     }
 }
 
+fn timing_config(timing: &mut ui::Timing, settings: &settings::Settings) {
+    timing.zero_cache_miss_cycles = settings.flag("emulation.lag_reduction.zero_cache_miss_cycles");
+    timing.single_cycle_instructions =
+        settings.flag("emulation.lag_reduction.single_cycle_instructions");
+}
+
 extern "C" fn create(
     config: *const AdapterConfig,
     callbacks: *const abi::ModLoader_Host_Callbacks,
@@ -344,6 +350,7 @@ extern "C" fn create(
     }
 
     video_config(&mut device.ui.config.video, &settings);
+    timing_config(&mut device.ui.timing, &settings);
     device.rdram.size = RDRAM_ALLOCATION;
     device.speed_limiter.enabled = settings.flag("emulation.speed_limit");
     let (usb_tx, usb_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -648,6 +655,9 @@ extern "C" fn setting_set(adapter: *mut c_void, key: *const c_char, value: *cons
             }
             "emulation.debug_output" => {
                 debug::set_enabled(device, adapter.settings.flag(key));
+            }
+            _ if key.starts_with("emulation.lag_reduction.") => {
+                timing_config(&mut device.ui.timing, &adapter.settings);
             }
             _ if key.starts_with("video.")
                 || key.starts_with("parallel.")

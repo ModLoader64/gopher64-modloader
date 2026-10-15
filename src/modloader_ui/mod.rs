@@ -23,9 +23,25 @@ pub struct Video {
 }
 
 #[derive(Default)]
+pub struct Timing {
+    pub zero_cache_miss_cycles: bool,
+    pub single_cycle_instructions: bool,
+    pub instruction_active: bool,
+    pub cache_miss_depth: u32,
+}
+
+impl Timing {
+    pub fn skip_cycles(&self) -> bool {
+        (self.single_cycle_instructions && self.instruction_active)
+            || (self.zero_cache_miss_cycles && self.cache_miss_depth != 0)
+    }
+}
+
+#[derive(Default)]
 pub struct Ui {
     pub dirs: Dirs,
     pub config: config::Config,
+    pub timing: Timing,
     pub game_id: String,
     pub game_hash: String,
     pub input: Input,

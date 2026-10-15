@@ -256,6 +256,10 @@ fn set_random_register(device: &device::Device) -> u64 {
 }
 
 pub fn add_cycles(device: &mut device::Device, cycles: u64) {
+    #[cfg(feature = "modloader")]
+    if device.ui.timing.skip_cycles() {
+        return;
+    }
     device.cpu.cop0.regs[COP0_COUNT_REG] += cycles // COUNT_REG is shifted right 1 bit when read by MFC0
 }
 

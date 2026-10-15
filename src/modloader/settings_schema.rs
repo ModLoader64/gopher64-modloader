@@ -237,6 +237,24 @@ pub(super) static DESCRIPTIONS: &[Description] = &[
             false,
         )
     },
+    describe(
+        c"emulation.lag_reduction.zero_cache_miss_cycles",
+        c"Zero cache miss cycles",
+        c"Emulation/Lag reduction",
+        c"Removes cache miss cycle cost",
+        SETTING_BOOL,
+        "true",
+        false,
+    ),
+    describe(
+        c"emulation.lag_reduction.single_cycle_instructions",
+        c"Single cycle CPU instructions",
+        c"Emulation/Lag reduction",
+        c"One cycle per CPU instruction (similar to Mupen64Plus CountPerOp = 1)",
+        SETTING_BOOL,
+        "false",
+        false,
+    ),
     number(
         c"emulation.controllers",
         c"Controllers",
