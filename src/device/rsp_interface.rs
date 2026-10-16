@@ -145,6 +145,14 @@ fn do_dma(device: &mut device::Device, dma: RspDma) {
 
     let mut mem_addr = dma.memaddr & 0xff8;
     let mut dram_addr = dma.dramaddr & (device::rdram::RDRAM_MASK as u32 & !7);
+    // 6105 boot DMA expects a 24-bit RDRAM
+    if dma.dir == DmaDir::Read
+        && dma.dramaddr == 0xB12FB1F0
+        && dma.memaddr == 0xB120
+        && dma.length == 0xFE817000
+    {
+        dram_addr &= 0xFFFFFF;
+    }
     let offset = dma.memaddr & 0x1000;
 
     ui::video::check_framebuffers(dram_addr, count * (length + skip) - skip);
