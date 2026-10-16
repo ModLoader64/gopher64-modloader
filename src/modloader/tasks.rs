@@ -7,6 +7,10 @@ pub(super) struct TaskState {
     pub(super) graphics_task: bool,
     pub(super) full_sync: bool,
     #[serde(skip)]
+    pub(super) dp_pending: bool,
+    #[serde(skip)]
+    pub(super) screen_pending: bool,
+    #[serde(skip)]
     pub(super) hle_wait: Option<(usize, [u8; 8])>,
 }
 
@@ -86,7 +90,11 @@ fn hle_graphics_task(device: &mut device::Device) -> bool {
 
 fn hle_task_progress(device: &mut device::Device, flags: u32) {
     if flags & ui::video::INTERRUPT_DP != 0 {
-        device::events::create_event(device, device::events::EVENT_TYPE_DP, HLE_DP_CYCLES);
+        if device.rdp.regs_dpc[device::rdp::DPC_STATUS_REG] & device::rdp::DPC_STATUS_FREEZE != 0 {
+            device.modloader.as_mut().unwrap().tasks.dp_pending = true;
+        } else {
+            device::events::create_event(device, device::events::EVENT_TYPE_DP, HLE_DP_CYCLES);
+        }
     }
 
     if flags & ui::video::TASK_WAITING != 0 {
@@ -143,6 +151,30 @@ pub fn rdp_full_sync(device: &mut device::Device) {
     }
 }
 
+pub fn rdp_unfreeze(device: &mut device::Device) {
+    let Some(context) = device.modloader.as_mut() else {
+        return;
+    };
+    let interrupt = std::mem::take(&mut context.tasks.dp_pending);
+    let screen = std::mem::take(&mut context.tasks.screen_pending);
+    if interrupt {
+        device::rdp::rdp_interrupt_event(device);
+    }
+    if screen {
+        ui::video::update_screen();
+    }
+}
+
+pub fn update_screen(device: &mut device::Device) {
+    if let Some(context) = device.modloader.as_mut()
+        && context.tasks.dp_pending
+    {
+        context.tasks.screen_pending = true;
+    } else {
+        ui::video::update_screen();
+    }
+}
+
 pub(super) fn restore(device: &mut device::Device, saved: Option<TaskState>) {
     let tasks = saved.unwrap_or_else(|| {
         let task = libultra_task(device);
@@ -150,8 +182,7 @@ pub(super) fn restore(device: &mut device::Device, saved: Option<TaskState>) {
             libultra: task.is_some(),
             graphics_task: matches!(task, Some((M_GFXTASK, _)))
                 && device::events::get_event(device, device::events::EVENT_TYPE_SP).is_some(),
-            full_sync: false,
-            hle_wait: None,
+            ..TaskState::default()
         }
     });
     if let Some(context) = device.modloader.as_mut() {

@@ -137,6 +137,9 @@ pub fn update_screen(device: &mut device::Device) {
     }
 
     if !netplay::in_rollback(device.netplay.as_ref()) {
+        #[cfg(feature = "modloader")]
+        crate::modloader::update_screen(device);
+        #[cfg(not(feature = "modloader"))]
         ui::video::update_screen();
         device.speed_limiter.frame_counter += 1;
         let _ = device.ui.video.vis_tx.as_ref().unwrap().send(true);

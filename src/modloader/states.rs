@@ -87,7 +87,9 @@ fn encode(device: &mut device::Device) -> Option<Vec<u8>> {
     ui::video::save_state(rdp_state.as_mut_ptr());
     let device_data = postcard::to_stdvec(&*device).ok()?;
     let saves_data = postcard::to_stdvec(&device.ui.storage.saves).ok()?;
-    let task_data = postcard::to_stdvec(&device.modloader.as_ref()?.tasks).ok()?;
+    let tasks = &device.modloader.as_ref()?.tasks;
+    let mut task_data = postcard::to_stdvec(tasks).ok()?;
+    task_data.push(u8::from(tasks.dp_pending) | (u8::from(tasks.screen_pending) << 1));
     ui::storage::compress_file(&[
         (&device_data, "device"),
         (&saves_data, "saves"),
@@ -110,10 +112,15 @@ fn decode_tasks(bytes: &[u8]) -> Result<Option<tasks::TaskState>, ()> {
     }
     let mut data = Vec::new();
     file.read_to_end(&mut data).map_err(|_| ())?;
-    let (state, remaining) = postcard::take_from_bytes(&data).map_err(|_| ())?;
-    if !remaining.is_empty() {
-        return Err(());
-    }
+    let (mut state, remaining) =
+        postcard::take_from_bytes::<tasks::TaskState>(&data).map_err(|_| ())?;
+    let pending = match remaining {
+        [] => 0,
+        [pending] if *pending <= 3 => *pending,
+        _ => return Err(()),
+    };
+    state.dp_pending = pending & 1 != 0;
+    state.screen_pending = pending & 2 != 0;
     Ok(Some(state))
 }
 

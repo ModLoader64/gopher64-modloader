@@ -18,7 +18,7 @@ pub const DPS_REGS_COUNT: usize = 4;
 
 /* DPC status - read */
 const DPC_STATUS_XBUS_DMEM_DMA: u32 = 1 << 0;
-const DPC_STATUS_FREEZE: u32 = 1 << 1;
+pub const DPC_STATUS_FREEZE: u32 = 1 << 1;
 const DPC_STATUS_FLUSH: u32 = 1 << 2;
 const DPC_STATUS_START_GCLK: u32 = 1 << 3;
 const DPC_STATUS_TMEM_BUSY: u32 = 1 << 4;
@@ -153,6 +153,8 @@ fn update_dpc_status(device: &mut device::Device, w: u32) {
     /* clear / set freeze */
     if w & DPC_CLR_FREEZE != 0 {
         device.rdp.regs_dpc[DPC_STATUS_REG] &= !DPC_STATUS_FREEZE;
+        #[cfg(feature = "modloader")]
+        crate::modloader::rdp_unfreeze(device);
         if device.rdp.wait_frozen {
             run_rdp(device);
             device.rdp.wait_frozen = false;

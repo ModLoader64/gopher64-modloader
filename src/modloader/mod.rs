@@ -12,7 +12,9 @@ pub use debug::debug_output;
 pub use events::{boot_dma, reset, vertical_interrupt};
 pub use memory::{map_ram_alias, translate_ram_extension};
 pub use modloader_abi::{ModLoader_Frame as Frame, ModLoader_Gpu_Image as GpuImage};
-pub use tasks::{hle_task_waiting, rdp_full_sync, rsp_broke, rsp_task_starting};
+pub use tasks::{
+    hle_task_waiting, rdp_full_sync, rdp_unfreeze, rsp_broke, rsp_task_starting, update_screen,
+};
 
 use crate::{device, retroachievements, ui};
 use abi::n64::{
